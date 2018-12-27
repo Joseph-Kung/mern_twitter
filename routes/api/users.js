@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../../models/User');
 const keys = require('../../config/keys');
 const jwt = require('jsonwebtoken');
+const passport = require('passport');
 
 router.get('/test', (req, res) => res.json({msg: 'This is the users route' }));
 
@@ -24,7 +25,16 @@ router.post('/register', (req, res) => {
             if (err) console.log(err);
             newUser.password = hash;
             newUser.save()
-              .then(user => res.json(user))
+              .then(user => {
+                const payload = {id: user.id, name: user.name};
+
+                jwt.sign(payload, keys.secretOrKey, { expiresIn: 3600 }, (err, token) => {
+                  res.json({
+                    success: true,
+                    token: 'Bearer ' + token
+                  });
+                });
+              })
               .catch(err => console.log(err));
           })
         })
@@ -63,6 +73,14 @@ router.post('/login', (req, res) => {
           }
         })
     })
+})
+
+router.get('/current', passport.authenticate('jwt', { session: false }), (req, res) => {
+  res.json({
+    id: req.user.id,
+    handle: req.user.handle,
+    email: req.user.email
+  });
 })
 
 module.exports = router;
